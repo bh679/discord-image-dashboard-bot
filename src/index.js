@@ -32,7 +32,7 @@ async function main() {
     ],
   });
 
-  client.once('ready', async () => {
+  client.once('clientReady', async () => {
     console.log(`[discord] Logged in as ${client.user.tag}`);
 
     const guildId = process.env.DISCORD_GUILD_ID;

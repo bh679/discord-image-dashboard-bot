@@ -87,13 +87,37 @@ async function backfillChannel(db, channel) {
 }
 
 async function runBackfill(db, guild) {
-  const channels = guild.channels.cache.filter(
-    (c) => c.type === ChannelType.GuildText && c.viewable
+  const TEXT_TYPES = new Set([
+    ChannelType.GuildText,
+    ChannelType.GuildAnnouncement,
+    ChannelType.GuildForum,
+  ]);
+
+  const baseChannels = guild.channels.cache.filter(
+    (c) => TEXT_TYPES.has(c.type) && c.viewable
   );
 
-  console.log(`[backfill] Starting backfill for ${channels.size} channels in "${guild.name}"`);
+  // Collect all active threads from every text channel
+  const threadChannels = [];
+  for (const channel of baseChannels.values()) {
+    try {
+      const active = await channel.threads.fetchActive();
+      for (const thread of active.threads.values()) {
+        if (thread.viewable) threadChannels.push(thread);
+      }
+      const archived = await channel.threads.fetchArchived({ limit: 100 });
+      for (const thread of archived.threads.values()) {
+        if (thread.viewable) threadChannels.push(thread);
+      }
+    } catch (_) {
+      // channel may not support threads
+    }
+  }
 
-  for (const channel of channels.values()) {
+  const allChannels = [...baseChannels.values(), ...threadChannels];
+  console.log(`[backfill] Starting backfill for ${allChannels.length} channels/threads in "${guild.name}"`);
+
+  for (const channel of allChannels) {
     try {
       await backfillChannel(db, channel);
     } catch (err) {
