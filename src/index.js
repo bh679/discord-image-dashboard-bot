@@ -3,7 +3,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const { openDatabase } = require('./db');
 const { runBackfill, attachRealtimeListener } = require('./imageCollector');
-const { startApiServer } = require('./api');
+const { startApiServer, setRescanHandler } = require('./api');
 
 const REQUIRED_ENV = ['DISCORD_BOT_TOKEN', 'DISCORD_GUILD_ID'];
 
@@ -45,6 +45,7 @@ async function main() {
 
     console.log(`[discord] Connected to server: "${guild.name}"`);
 
+    setRescanHandler(() => runBackfill(db, guild));
     attachRealtimeListener(db, client, guildId);
     await runBackfill(db, guild);
   });

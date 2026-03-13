@@ -5,6 +5,12 @@ const { getImages, getImageById, getChannels, getAuthors, getStats } = require('
 
 const DATA_DIR = process.env.DATA_DIR || './data';
 
+let _rescanHandler = null;
+
+function setRescanHandler(fn) {
+  _rescanHandler = fn;
+}
+
 function createApp(db) {
   const app = express();
 
@@ -62,6 +68,17 @@ function createApp(db) {
     }
   });
 
+  app.post('/api/bot/rescan', async (_req, res) => {
+    if (!_rescanHandler) {
+      return res.status(503).json({ success: false, error: 'Bot not ready for rescan' });
+    }
+    res.json({ success: true, message: 'Rescan started' });
+    // Run in background — don't await on the response
+    _rescanHandler().catch((err) => {
+      console.error('[api] Rescan error:', err.message);
+    });
+  });
+
   app.get('/api/stats', (_req, res) => {
     try {
       const stats = getStats(db);
@@ -84,4 +101,4 @@ function startApiServer(db) {
   return app;
 }
 
-module.exports = { createApp, startApiServer };
+module.exports = { createApp, startApiServer, setRescanHandler };
